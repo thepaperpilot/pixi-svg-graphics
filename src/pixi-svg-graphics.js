@@ -446,6 +446,29 @@ SVGGraphics.prototype.drawPolygonNode = function (node) {
 }
 
 /**
+ * Draws the given defs svg node
+ * @param  {SVGDefsElement} node
+ */
+SVGGraphics.prototype.drawDefsNode = function(node) {
+    this.defs = this.defs ?
+        Object.assign(this.defs, this.findIds(node)) :
+        this.findIds(node)
+}
+
+/**
+ * Draws the given use svg node
+ * @param  {SVGUseElement} node
+ */
+SVGGraphics.prototype.drawUseNode = function(node) {
+    var id = node.getAttribute('xlink:href')
+    if (id[0] !== '#') {
+        console.warn('Cannot render Use tag with non-local reference')
+        return
+    }
+    this.drawNodeByID(id.slice(1))
+}
+
+/**
  * Draws the given path svg node
  * @param  {SVGPathElement} node
  */
@@ -681,6 +704,28 @@ SVGGraphics.prototype.tokenizePathData = function (pathData) {
     return data;
 }
 
+SVGGraphics.prototype.drawNodeByID = function(nodeName) {
+    if (!(nodeName in this.defs)) {
+        console.warn('No node with id ' + nodeName + ' found. Make sure to put it in a Defs node.')
+        return
+    }
+
+    this.drawNode(this.defs[nodeName])
+}
+
+SVGGraphics.prototype.findIds = function(node) {
+    var children = node.children || node.childNodes
+    var ids = { [node.id]: node }
+    for (var i = 0, len = children.length; i < len; i++) {
+        child = children[i];
+        if (child.nodeType !== 1) {
+            continue;
+        }
+        Object.apply(ids, this.findIds(child))
+    }
+    return ids
+}
+
 SVGGraphics.prototype.applyTransformation = function (node) {
     if (node.getAttribute('transform')) {
         var transformMatrix = new PIXI.Matrix();
@@ -839,7 +884,6 @@ SVGGraphics.prototype.drawSVG = function (svg) {
         this.drawNode(children[i]);
     }
 }
-
 
 var splitAttributeParams = function(attr){
     if(attr.indexOf(",") >= 0){
